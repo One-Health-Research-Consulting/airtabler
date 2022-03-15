@@ -521,14 +521,18 @@ multiple <- function(x) {
 
 air_prepare_record <- function(x) {
   # unbox all 1-sized elements which are not marked with "air_multiple" class:
-
+ print("in air_prepare_record")
   for(i in seq_along(x)) {
+    print("in for loop")
     if(inherits(x[[i]], "air_multiple")) {
+      print("in air multiple")
       class(x[[i]]) <- class(x[[i]])[-1]
     } else {
       if(is.list(x[[i]])) {
+        print("in is.list")
         x[[i]] <- unlist(x[[i]])
       } else if(length(x[[i]]) == 1) {
+        print("in length == 1")
         x[[i]] <- jsonlite::unbox(x[[i]])
       }
     }

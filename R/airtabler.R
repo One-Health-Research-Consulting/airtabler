@@ -346,6 +346,7 @@ air_make_json <- function (base, table_name, record_data, record_id = NULL, meth
 
 
   if(method == "PATCH"){
+    print("using the patch method")
     ## the patch method already specifies a record so we
     ## can remove a lot of addition json elements
 

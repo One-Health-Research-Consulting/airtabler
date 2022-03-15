@@ -4,7 +4,7 @@
 \alias{air_update_data_frame}
 \title{Update records from a dataframe}
 \usage{
-air_update_data_frame(base, table_name, record_ids, records)
+air_update_data_frame(base, table_name, record_ids, records, verbose = TRUE)
 }
 \arguments{
 \item{base}{String. Airtable base}
@@ -14,6 +14,8 @@ air_update_data_frame(base, table_name, record_ids, records)
 \item{record_ids}{Vector of strings. Records to be modified}
 
 \item{records}{Dataframe. Values to update}
+
+\item{verbose}{Logical. Should we print status messages?}
 }
 \value{
 

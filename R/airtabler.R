@@ -469,22 +469,39 @@ air_insert_data_frame <- function(base, table_name, records,typecast) {
 #' @param table_name String. Table name
 #' @param record_ids Vector of strings. Records to be modified
 #' @param records Dataframe. Values to update
+#' @param verbose Logical. Should we print status messages?
 #'
 #' @return
 #' @export
 #'
 #' @examples
-air_update_data_frame <- function(base, table_name, record_ids, records) {
+air_update_data_frame <- function(base, table_name, record_ids, records, verbose = TRUE) {
   lapply(seq_len(nrow(records)), function(i) {
+    if(verbose){
+      print("inside lappy")
+    }
     record_data <- as.list(records[i,])
+
+    if(verbose){
+      print("created record_data")
+    }
     record_id <- ifelse(is.null(record_ids), record_data$id, record_ids[i])
+    if(verbose){
+      print("created record_id")
+    }
     json_record_data <- air_make_json(base, table_name, record_data,
                                       record_id = record_id,method = "PATCH")
+    if(verbose){
+      print("created json_record_data")
+    }
 
     air_make_request(base = base,table_name = table_name,
                      json_record_data = json_record_data,
                      record_id = record_id,
                      method = "PATCH")
+    if(verbose){
+      print("made request")
+    }
   })
 }
 

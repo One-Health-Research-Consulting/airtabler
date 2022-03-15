@@ -522,6 +522,7 @@ multiple <- function(x) {
 air_prepare_record <- function(x) {
   # unbox all 1-sized elements which are not marked with "air_multiple" class:
  print("in air_prepare_record")
+  print(x)
   for(i in seq_along(x)) {
     print("in for loop")
     if(inherits(x[[i]], "air_multiple")) {

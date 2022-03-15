@@ -525,6 +525,7 @@ air_prepare_record <- function(x) {
   print(x)
   for(i in seq_along(x)) {
     print("in for loop")
+    print(x[[i]])
     if(inherits(x[[i]], "air_multiple")) {
       print("in air multiple")
       class(x[[i]]) <- class(x[[i]])[-1]

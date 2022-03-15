@@ -342,7 +342,9 @@ air_make_json <- function (base, table_name, record_data, record_id = NULL, meth
   }
 
   #browser()
+  print("created record data")
   record_data <- air_prepare_record(as.list(record_data))
+  print("created fields")
   fields <- list(fields = record_data)
 
 

@@ -335,6 +335,7 @@ air_insert <- function(base, table_name, record_data) {
 #'
 #' @examples
 air_make_json <- function (base, table_name, record_data, record_id = NULL, method = "POST",typecast = TRUE){
+  print("in air make json")
   if (inherits(record_data, "data.frame")) {
     print("using the data.frame method")
     return(air_insert_data_frame(base, table_name, record_data, typecast))

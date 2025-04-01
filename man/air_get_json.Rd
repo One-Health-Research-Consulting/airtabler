@@ -15,6 +15,7 @@ air_get_json(
   sortField = NULL,
   sortDirection = NULL,
   combined_result = TRUE,
+  air_url = "https://api.airtable.com/v0",
   pretty = FALSE
 )
 }

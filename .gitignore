@@ -6,3 +6,6 @@ testing_script.R
 .env
 /doc/
 /Meta/
+.lintr
+.vscode/**
+.radian_profile

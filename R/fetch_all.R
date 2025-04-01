@@ -43,19 +43,24 @@
 #'
 fetch_all <- function(base, table_name, ...) {
   out <- list()
-  out[[1]] <- airtabler::air_get(base, table_name, combined_result = FALSE,...)
+  out[[1]] <- airtabler::air_get(base, table_name, combined_result = FALSE, ...)
+
   if(length(out[[1]]) == 0){
     emptyTableMessage <- glue::glue("The queried view for {table_name} in {base} is empty")
     warning(emptyTableMessage)
-    return(emptyTableMessage)
+    return(NULL)
   } else {
     offset <- airtabler::get_offset(out[[1]])
     while (!is.null(offset)) {
       out <- c(out, list(airtabler::air_get(base, table_name, combined_result = FALSE, offset = offset, ...)))
       offset <- airtabler::get_offset(out[[length(out)]])
     }
+
+    out_col_names <- purrr::reduce(out, ~union(.x, names(.y)), .init = character(0))
+    out <- purrr::reduce(out_col_names, ~standardize_list_columns(.x, .y), .init = out)
     out <- dplyr::bind_rows(out)
-    cbind(id = out$id, out$fields, createdTime = out$createdTime,
+
+    cbind(id = out$id, out$fields |> bind_rows(), createdTime = out$createdTime,
           stringsAsFactors = FALSE)
   }
 }

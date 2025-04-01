@@ -33,15 +33,15 @@ air_get_json <- function(base, table_name,
                          sortField = NULL,
                          sortDirection = NULL,
                          combined_result = TRUE,
+                         air_url = "https://api.airtable.com/v0",
                          pretty = FALSE) {
 
-  search_path <- table_name
+  search_path <- utils::URLencode(table_name, reserved = T)
 
   if(!missing(record_id)) {
     search_path <- paste0(search_path, "/", record_id)
   }
   request_url <- sprintf("%s/%s/%s?", air_url, base, search_path)
-  request_url <- utils::URLencode(request_url)
 
   # append parameters to URL:
   param_list <- as.list(environment())[c(

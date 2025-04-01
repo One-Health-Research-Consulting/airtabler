@@ -1,270 +1,290 @@
 ---
-title: "airtabler"
-output: 
-  html_document: 
-    keep_md: yes
+output:
+  pdf_document:
+    latex_engine: lualatex
+mainfont: NotoSans
+mainfontfallback:
+  - "Apple Color Emoji:mode=harf"
 ---
-Provides access to the [Airtable API](http://airtable.com/api)
 
+# airtabler
 
+## Overview
 
-## Install
+The [`airtabler`](https://ecohealthalliance-org.zoom.us/my/nlayman) package provides comprehensive tools for interacting with Airtable bases through the Airtable API. With this package, you can list bases, export data, and save exports in various formats including Excel workbooks, CSV files, and R data objects, which can be easily re-imported into Airtable or used for further analysis.
 
-
-```r
-devtools::install_github("ecohealthalliance/airtabler")
-```
-
-## Setup
-> After you've created and configured the schema of an Airtable base from the
-graphical interface, your Airtable base will provide its own API to create,
-read, update, and destroy records. -  [airtable.com/api](http://airtable.com/api) 
-
-## Get and store the API tokens
-
-** As of November 2022 Airtable recommends using scoped tokens. The personal access tokens can be used interchangeably with the now superseded Airtable API Key.  
-
-Create appropriately [scoped personal access tokens](https://airtable.com/developers/web/guides/personal-access-tokens). 
-
-__airtabler__ functions will read the API token from
-  environment variable `AIRTABLE_API_KEY`. To start R session with the
-  initialized environvent variable create an `.Renviron` file in your home directory.
-  
-```r
-usethis::edit_r_environ
-```
-
-In .Renviron add the following:
-```
-AIRTABLE_API_KEY=your_api_token_here
-
-```
-
-**NOTE: Be sure the last line of your .Renviron file is an empty return line**
-
-To check where your home is, type `path.expand("~")` in your R console.
-
-If you're frequently working across multiple bases, consider using [`gitcrypt`](https://ecohealthalliance.github.io/eha-ma-handbook/16-encryption.html#set-up-encryption-for-a-repo-that-did-not-previously-use-git-crypt.) and the [`dotenv` package](https://cran.r-project.org/web/packages/dotenv/dotenv.pdf) to securely manage multiple tokens.  
-
-
-### Using the metadata API
-
-In order to use the metadata API, a personal access token or OAuth integration 
-must be used. User API keys are not supported. See the [airtable guide](https://airtable.com/developers/web/api/get-base-schema) for more 
-information.
-
-## Usage
-
-Create airtable base object:
-
+## Installation
 
 ```r
+# Install from GitHub
+devtools::install_github("n8layman/airtabler")
+
+# Load required packages
 library(airtabler)
-
-TravelBucketList <- 
-  airtable(
-    base = "appIS8u9n73hzwE7R", 
-    tables = c("Destinations", "Hotels", "Travel Partners")
-  )
+library(tidyverse)
 ```
 
-_Note that you should replace the Airtable base identifiers and `record_id`s when running the examples._
+## Authentication
 
-### Get records
-Use select function to get all records:
+Before using the package, you need to set up your Airtable API token:
 
 ```r
-hotels <- 
-  TravelBucketList$Hotels$select()
-
-knitr::kable(hotels[, c("id","Name", "Stars", "Price/night")], format = "markdown")
+# Set your Airtable API token (recommended to use .Renviron)
+Sys.setenv(AIRTABLE_API_KEY="your_api_token")
 ```
 
-Filter records with formula (see [formula field reference ](https://support.airtable.com/hc/en-us/articles/203255215-Formula-Field-Reference)).
+For security, it's recommended to store your API token in your `.Renviron` file:
 
-
-```r
-hotels <- 
-  TravelBucketList$Hotels$select(filterByFormula = " ({Avg Review} > 8.5)" )
-
-knitr::kable(hotels[, c("id","Name", "Stars", "Avg Review", "Price/night")], format = "markdown")
+```
+# In your .Renviron file
+AIRTABLE_API_KEY=your_api_token
 ```
 
-Sort data with sort parameter:
+You can edit your `.Renviron` file with:
 
 ```r
-hotels <- 
-  TravelBucketList$Hotels$select(sort = list(
-    list(field="Avg Review", direction = "desc"),
-    list(field="Price/night", direction = "asc")
-  ))
-
-
-knitr::kable(hotels[, c("id","Name", "Stars", "Avg Review", "Price/night")], format = "markdown")
+usethis::edit_r_environ()
 ```
 
-### Using page size and offset
+## Basic Usage
 
-Define page size with `pageSize`:
+### Listing Available Bases
 
 ```r
-hotels <- TravelBucketList$Hotels$select(pageSize = 3)
-nrow(hotels)
+# Get a list of all bases your token has access to
+bases <- air_list_bases() |> pluck("bases")
 ```
 
-Continue at offset, returned by previous select:
+This returns a data frame with base information including:
+
+- `id`: The base ID
+- `name`: The base name
+- `permissionLevel`: Your access level to the base
+
+### Exporting Base Data
+
+The package provides functions for exporting Airtable base data:
 
 ```r
-hotels <- TravelBucketList$Hotels$select(offset = get_offset(hotels))
-nrow(hotels)
-```
+# Generate metadata for a specific base
+base_metadata <- air_generate_metadata_from_api(base_id)
 
-
-To fetch all rows (even > 100 records) use `select_all`. The `select_all` 
-function will handle the offset and return the result as a single object.
-
-
-```r
-hotels <- TravelBucketList$Hotels$select_all()
-nrow(hotels)
-```
-
-
-Other optional arguments:
-
-* __fields__ A list of fields to be returned (instead of all fields).
-* __view__ The name or ID of the view, defined on the table.
-* __maxRecord__ The maximum total number of records that will be returned.
-
-### Retrieve a record
-Add the `record_id` argument to get the details of a record:
-
-
-```r
-radisson <- 
-  
-  TravelBucketList$Hotels$select(record_id = "recgKO7K15YyWEsdb")
-
-str(radisson$fields, max.level = 1)
-```
-
-### Insert a record
-Insert a new record with `insert` function (API returns all record data - including new record ID):
-
-```r
-record_data <- list(
-  Name = "New hotel",
-  `Price/night` = 200,
-  Stars = "****",
-  Amenities = c("Hiking", "Gym"),
-  Notes = "Just a sample record.\nWith extra line in notes."
+# Export all data from a base to an R object
+base_dump <- air_dump(
+  base_id,
+  metadata = base_metadata,
+  base_path = "path/to/output/directory",
+  attachment_folder = "attachments",
+  overwrite = FALSE,
+  remove_original_field = TRUE,
+  organize_by_table_field = TRUE
 )
-
-new_hotel <- 
-  TravelBucketList$Hotels$insert(record_data)
-
-cat("Inserted a record with ID=", new_hotel$id, sep = "")
 ```
 
+### Export Format Options
 
-### Update a record
-Update the price of the new hotel (API returns all record data):
+#### To Excel Workbook
 
 ```r
-new_hotel <- 
-  TravelBucketList$Hotels$update(
-    record_id = new_hotel$id, 
-    record_data = list(
-      `Price/night` = 120,
-      Notes = "Check out the price!!!"
+# Export to Excel workbook
+air_dump_to_xlsx(
+  base_dump,
+  output_file = "path/to/output.xlsx",
+  base_name = "Base Name"
+)
+```
+
+> **⚠️ Important:** Excel has a ~30,000 character limit per cell. Fields with very long text content (such as sequence data, JSON objects, or lengthy notes) may be truncated. For data preservation, use RDS or CSV formats as described below.
+
+#### To CSV Files
+
+```r
+# Export to CSV files (one file per table)
+air_dump_to_csv(
+  base_dump,
+  output_dir = "path/to/output/directory",
+  attachments_dir = NULL,
+  overwrite = TRUE,
+  output_id = "my_base_csvs",
+  names_to_snake_case = TRUE
+)
+```
+
+#### To R Object
+
+```r
+# Save as R object for easier importing later
+saveRDS(base_dump, file = "path/to/output.rds")
+```
+
+## Batch Processing Example
+
+The following example demonstrates how to process and export multiple Airtable bases:
+
+```r
+# Get list of bases your token has access to
+bases <- air_list_bases() |> pluck("bases")
+
+# Create a base directory for all exports
+base_export_dir <- "path/to/export/directory"
+dir.create(base_export_dir, showWarnings = FALSE, recursive = TRUE)
+
+# Process each base
+pwalk(bases, function(id, name, permissionLevel) {
+  # Display the current base name
+  message("Processing: ", stringr::str_squish(name))
+
+  # Create cleaned base name for filenames and directories
+  cleaned_base_name <- gsub(" ", "_", stringr::str_squish(name))
+
+  # Create output directory
+  output_dir <- file.path(base_export_dir, paste0(cleaned_base_name, "_", id))
+  dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
+
+  # Try to process the base, with error handling
+  tryCatch({
+    # Generate metadata and export data
+    base_metadata <- air_generate_metadata_from_api(id)
+    base_dump <- air_dump(
+      id,
+      metadata = base_metadata,
+      base_path = output_dir,
+      attachment_folder = "attachments",
+      overwrite = FALSE,
+      remove_original_field = TRUE,
+      organize_by_table_field = TRUE
     )
-  )
 
-cat("Updated a record with ID=", new_hotel$id, ". ", 
-    "New price: ", new_hotel$fields$`Price/night`, sep = "")
+    # Base output file path
+    output_file <- file.path(output_dir, cleaned_base_name)
+
+    # Export to different formats
+    # 1. Excel (WARNING: has ~30,000 character limit per cell that will truncate long data)
+    air_dump_to_xlsx(
+      base_dump,
+      output_file = paste0(output_file, ".xlsx"),
+      base_name = name
+    )
+
+    # 2. R object (preserves all data without truncation)
+    saveRDS(base_dump, file = paste0(output_file, ".rds"))
+
+    # 3. CSV files (one per table)
+    air_dump_to_csv(
+      base_dump,
+      output_dir = output_dir,
+      attachments_dir = NULL,
+      overwrite = TRUE,
+      output_id = paste0(cleaned_base_name, "_csv_files"),
+      names_to_snake_case = TRUE
+    )
+
+    message("Successfully exported base: ", name)
+  }, error = function(e) {
+    message("Error processing base '", name, "' (ID: ", id, "): ", e$message)
+  })
+})
 ```
 
-### Delete a record
+## Re-importing to Airtable
+
+The files generated by export functions are formatted for easy re-import into Airtable:
+
+### From Excel
+
+1. Open your Airtable base in a web browser
+2. Select the table where you want to import data
+3. Click on the "+" button in the view bar
+4. Select "Import data"
+5. Choose "Upload a file" and select your Excel file
+6. Follow the Airtable import wizard to map fields
+7. Confirm and complete the import
+
+> **⚠️ Warning:** When reimporting Excel files to Airtable, be aware that any fields that exceeded Excel's ~30,000 character limit were truncated during the export process. This is particularly important for data like genetic sequences, large JSON objects, or any long-form text. If your data contains such fields, consider using the CSV or RDS formats for data preservation and only use Excel for viewing or sharing.
+
+### From CSV
+
+Similar to Excel, but import each table's CSV file separately.
+
+### From R
+
+To re-use the R object in another R session:
 
 ```r
-TravelBucketList$Hotels$delete(new_hotel$id)
+# Load saved base dump
+base_dump <- readRDS("path/to/file.rds")
+
+# Now you can work with the data or export it again
 ```
 
+## Function Reference
 
-## Working with data frames
+### `air_list_bases()`
 
-Standard Airtable API does not accept a table of records. 
-Functions `insert` and `update` accept a data.frame and
-execute transactions (call Airtable API) row by row.
+Returns a list of all Airtable bases your API token can access.
 
-Insert records with a data frame:
+### `air_generate_metadata_from_api(base_id)`
 
-```r
-two_records <- 
-  data.frame(
-    Name = c("Sample1", "Sample2"),
-    `Price/night` = c(150, 180),
-    Stars = c("***", "****"),
-    Amenities = I(list(c("Wifi", "Pool"), c("Spa", "Laundry"))),
-    Notes = c("Foo", "Bar"),
-    
-    check.names = FALSE,
-    stringsAsFactors = FALSE
-  )
+Generates metadata for a specific base, which is required for export operations.
 
-new_records <-
-  TravelBucketList$Hotels$insert(two_records)
-```
+### `air_dump(base_id, metadata, ...)`
 
-Update records with a data frame:
+Exports all data from a base to an R object.
 
-```r
-# change records
-record_ids <- sapply(new_records, function(x) x$id)
-two_records$`Price/night` <- two_records$`Price/night` + 5
-two_records$Stars <- "*****"
+Parameters:
 
+- `base_id`: The ID of the Airtable base to export
+- `metadata`: Base metadata from `air_generate_metadata_from_api()`
+- `base_path`: Directory used for storing attachments and other supplementary files
+- `attachment_folder`: Subfolder name for attachments
+- `overwrite`: Whether to overwrite existing files
+- `remove_original_field`: Remove original field IDs after export
+- `organize_by_table_field`: Organize exported files by table and field
 
-updated <- 
-  TravelBucketList$Hotels$update(
-    record_id = record_ids, 
-    record_data = two_records)
-```
+### `air_dump_to_xlsx(base_dump, output_file, base_name)`
 
-Delete multiple records:
+Converts a base dump to an Excel workbook.
 
-```r
-# delete new records
-record_ids <- sapply(new_records, function(x) x$id)
-deleted <- 
-  TravelBucketList$Hotels$delete(record_ids)
-```
+### `air_dump_to_csv(base_dump, output_dir, ...)`
 
+Exports a base dump to a series of CSV files (one per table).
 
-## Programming with airtabler
+Parameters:
 
-While having all airtable base tables and functions in one object 
-is handy in interactive mode, it is recommended to use primitive
-functions for adding, reading, updating and deleting when programming
-R packages:
+- `base_dump`: The output from `air_dump()`
+- `output_dir`: Directory to save CSV files
+- `attachments_dir`: Optional directory for attachments
+- `overwrite`: Whether to overwrite existing files
+- `output_id`: Prefix for CSV filenames
+- `names_to_snake_case`: Convert column names to snake_case
 
+## Error Handling
 
-```r
-travel_base <- "appIS8u9n73hzwE7R"
+Most functions will return errors with informative messages if:
 
-# read data
-hotels <- air_select(travel_base, "Hotels")
+- Your API token is invalid or expired
+- You don't have permission to access a base
+- A base ID doesn't exist
+- There are connection issues with the Airtable API
 
-# get one record
-radisson <- air_select(travel_base, "Hotels", record_id = "recgKO7K15YyWEsdb")
+## Handling Large Bases
 
-# create
-inserted <- air_insert(travel_base, "Hotels", record_data)
+For bases with large amounts of data:
 
-# update
-updated <- air_update(travel_base, "Hotels", record_id = inserted$id, record_data)
+- **Excel Limitations:** Excel has a strict cell character limit (~30,000 characters), which **will truncate large text fields** like genetic sequences, JSON data, or lengthy text entries
+- **Data Preservation:** Always use the RDS format to preserve all data without truncation when working with R
+- **CSV Option:** For sharing data outside of R, CSV files maintain the complete data (though may have their own limitations with special characters)
+- **Re-importing Caution:** When re-importing to Airtable from Excel files, be aware that any truncated data cannot be recovered
+- For very large bases, process tables individually
 
-# delete
-deleted <- air_delete(travel_base, "Hotels", record_id = inserted$id)
-```
+## Dependencies
 
+- tidyverse (dplyr, purrr, stringr, etc.)
+- httr
+- jsonlite
+- openxlsx
+- fs
+
+## Contributing
+
+Contributions to improve `airtabler` are welcome. Please submit issues and pull requests on GitHub.

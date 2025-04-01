@@ -1,0 +1,60 @@
+{
+  "files.autoSave": "onFocusChange",
+  "editor.minimap.enabled": false,
+  "editor.wrappingIndent": "indent",
+  "editor.overviewRulerBorder": false,
+  "editor.lineHeight": 24,
+  "terminal.integrated.altClickMovesCursor": true,
+  "foam.edit.linkReferenceDefinitions": "withExtensions",
+  "foam.openDailyNote.titleFormat": "fullDate",
+  "foam.openDailyNote.directory": "resources/notes",
+  "foam.openDailyNote.fileExtension": "qmd",
+  "foam.files.notesExtensions": "qmd",
+  "foam.supportedLanguages": ["markdown", "quarto", "rmarkdown"],
+  "git.enableSmartCommit": true,
+  "git.postCommitCommand": "sync",
+  "files.exclude": {
+    "_site/**": true,
+    "renv/**/*": true
+  },
+  "files.insertFinalNewline": true,
+  "markdown.styles": [".vscode/custom-tag-style.css"],
+  // "markdownlint.config": {
+  //   "MD007": false,
+  //   "MD030": false
+  // },
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "editor.quickSuggestions": {
+      "other": true,
+      "comments": false,
+      "strings": false
+    }
+  },
+  "[quarto]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "quarto.quarto",
+  },
+  "r.bracketedPaste": true,
+  "r.plot.useHttpgd": true,
+  "r.useRenvLibPath": true,
+  "r.rterm.mac": "/Users/nathanlayman/.local/bin/radian", //Use this only for a Mac
+  //"r.rterm.mac": "/Users/nathanlayman/Documents/personal_repos/notes/.pixi/envs/default/bin/radian",
+  "r.lsp.debug": true,
+  "r.lsp.use_stdio": true,
+  "r.lsp.diagnostics": true,
+  "r.lsp.enabled": true,
+  "r.alwaysUseActiveTerminal": true,
+  "r.lsp.promptToInstall": true,
+  "r.rterm.option": [
+      "--no-save",
+      "--no-restore",
+      "--r-binary=/usr/local/bin/R"
+  ],
+  "[r]": {
+    "editor.tabSize": 2,
+    "editor.wordBasedSuggestions": "off",
+    "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",<>/"
+  }
+}

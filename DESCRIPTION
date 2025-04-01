@@ -27,10 +27,11 @@ Imports:
     stringr,
     tibble,
     deposits,
-    assertthat
+    assertthat,
+    openxlsx
 Remotes: 
     ropenscilabs/deposits
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.2
 Suggests: 
     knitr,
     rmarkdown

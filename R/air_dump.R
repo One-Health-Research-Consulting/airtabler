@@ -65,7 +65,7 @@ set_diff <- function(x,y){
 #'}
 #'
 #'
-air_create_metadata_table <- function(base,meta_data,table_name = "Meta Data",  field_descriptions = NA,
+air_create_metadata_table <- function(base,meta_data, table_name = "Meta Data",  field_descriptions = NA,
                                       type = "singleLineText", options = NA){
 
   # check for meta data table
@@ -309,7 +309,7 @@ air_update_metadata_table <- function(base,meta_data,table_name = "Meta Data", j
 
   # pull down current meta data table
 
-  current_metadata_table <- fetch_all(base,table_name)
+  current_metadata_table <- fetch_all(base, table_name)
 
   #create any new fields from meta_data
 
@@ -493,7 +493,7 @@ air_update_description_table <- function(base,description, table_name = "Descrip
 
   # pull down current table
 
-  current_metadata_table <- fetch_all(base,table_name)
+  current_metadata_table <- fetch_all(base, table_name)
   # convert to tibble for more consistent behavior in joins
   current_metadata_table<- tibble::as_tibble(current_metadata_table)
   current_metadata_table <- current_metadata_table |>
@@ -575,7 +575,7 @@ air_update_description_table <- function(base,description, table_name = "Descrip
 #'
 air_get_metadata_from_table <- function(base, table_name, add_id_field = FALSE, field_names_to_snakecase = TRUE){
   # get structural metadata table
-  str_metadata <- airtabler::fetch_all(base,table_name)
+  str_metadata <- fetch_all(base, table_name)
 
   # get original table names
   str_md_names <- names(str_metadata)
@@ -757,7 +757,7 @@ air_generate_metadata_from_tables <- function(base, table_names,limit=1){
   warning('Deprecated: For more complete results, use air_generate_metadata_from_api.
   Airtable does not return fields with empty values - "", false, or [].')
   meta_data_table <- purrr::map_dfr(table_names,function(x){
-    table_x <- airtabler::air_get(base,x,limit = limit )
+    table_x <- air_get(base,x,limit = limit )
     fields_x <- names(table_x)
 
     ## guess record types?
@@ -792,7 +792,7 @@ air_generate_metadata_from_tables <- function(base, table_names,limit=1){
 #' }
 air_get_base_description_from_table<- function(base, table_name,field_names_to_snakecase = TRUE){
   #fetch table
-  desc_table <- airtabler::fetch_all(base,table_name)
+  desc_table <- fetch_all(base, table_name)
   # to snake case
   if(field_names_to_snakecase){
     names(desc_table) <- snakecase::to_snake_case(names(desc_table))
@@ -905,183 +905,205 @@ air_generate_base_description <- function(title = NA,
 #'  type columns to vectors and
 #' tidyr::unnest for expanding list columns.
 #'
-air_dump <- function(base, metadata= NULL, description = NULL,
+air_dump <- function(base, metadata = NULL, description = NULL,
                      add_missing_fields = TRUE,
                      download_attachments = TRUE,
-                     attachment_fields=NULL,
+                     attachment_fields = NULL,
                      polite_downloads = TRUE,
                      field_names_to_snakecase = TRUE,
-                     ...){
-
-  # if metadata is null, check schema for metadata data table,
+                     ...) {
+  
+  # If no metadata is provided, attempt to retrieve it from the base
   if(is.null(metadata)){
-    message("No metadata provided. Metadata will be retrieved from the metadata
-            table or generated via API")
-    #get schema
+    message("No metadata provided. Metadata will be retrieved from the metadata table or generated via API")
+    
+    # Get the schema structure of the Airtable base
     base_schema <- air_get_schema(base)
-    # look for meta data table
-    table_names <- base_schema$tables$name
-
-    metadata_check <- grepl("meta data",table_names,ignore.case = TRUE)
-
-    if(any(metadata_check)){
-      message("Retreiving metadata from table")
-      metadata <- fetch_all(base = base,table_name = table_names[metadata_check])
+    
+    # Extract all table names from the schema
+    all_table_names <- base_schema$tables$name
+    
+    # Look for a metadata table in the base (case insensitive)
+    metadata_table_exists <- grepl("meta data", all_table_names, ignore.case = TRUE)
+    
+    if(any(metadata_table_exists)){
+      # If metadata table exists, fetch it from the base
+      message("Retrieving metadata from table")
+      metadata <- fetch_all(base = base, table_name = all_table_names[metadata_table_exists])
     } else {
-      message("Generating metadata from api with air_generate_metadta_from_api")
+      # If no metadata table exists, generate metadata using the API
+      message("Generating metadata from api with air_generate_metadata_from_api")
       metadata <- air_generate_metadata_from_api(base = base)
     }
   }
-
+  
+  # Convert all metadata column names to snake_case for consistency
   names(metadata) <- snakecase::to_snake_case(names(metadata))
-
-  ## check for required fields
-  required_fields <- c("table_name","field_name")
-
-  if(!all(required_fields %in% names(metadata))){
-    stop(glue::glue("metadata table must contain the
-                    following fields: {required_fields}. Note
+  if(field_names_to_snakecase) metadata$field_name <- snakecase::to_snake_case(metadata$field_name)
+  
+  # Define and check for required fields in the metadata
+  required_metadata_fields <- c("table_name", "field_name")
+  
+  if(!all(required_metadata_fields %in% names(metadata))){
+    stop(glue::glue("metadata table must contain the 
+                    following fields: {required_metadata_fields}. Note
                     that field names are converted to snakecase
                     before check."))
   }
-
-
+  
+  # Get unique table names from the metadata
   base_table_names <- unique(metadata$table_name)
-
-  print(base_table_names)
+  
+  # Process each table in the base and create a named list of tables
   table_list <- base_table_names |>
     purrr::set_names() |>
-    purrr::map(function(x){
+    purrr::map(function(table_name) {
+      
+      # Fetch all records from the current table
+      current_table <- fetch_all(base, table_name)
+      if(is.null(current_table)) return(NULL)
 
-      ## get fields from str_metadata
+      # Get expected field names for this table from metadata
+      expected_fields <- metadata[metadata$table_name == table_name, "field_name"]
 
-      fields_exp <- metadata[metadata$table_name == x,"field_name"]
-
-      if(field_names_to_snakecase){
-        fields_exp <- snakecase::to_snake_case(fields_exp)
+      # Convert field names to snake_case if option is enabled
+      if(field_names_to_snakecase) {
+        names(current_table) <- snakecase::to_snake_case(names(current_table))
+        expected_fields <- snakecase::to_snake_case(expected_fields)
       }
-
-      ## pull table - add check for blank tables
-      x_table <- airtabler::fetch_all(base,x)
-
-      if(!is.data.frame(x_table)){
-        x_table <- data.frame(id = character())
+      
+      # If table is empty or doesn't exist, create an empty dataframe with an id column
+      if(!is.data.frame(current_table)){
+        current_table <- data.frame(id = character())
       }
+      
+      # Identify observed fields (column names) in the fetched table
+      observed_fields <- names(current_table)
+      
+      # Find differences between expected and observed fields
+      fields_difference <- setdiff(expected_fields, observed_fields)
+      
+      # Handle field discrepancies if any exist
+      if(!is.null(fields_difference)){
+        # Check for fields in table but not in metadata (observed but not expected)
+        fields_in_table_not_in_metadata <- setdiff(observed_fields, expected_fields)
+        
+        # Define system fields that are allowed to exist without being in metadata
+        system_fields <- c("id", "createdTime", "created_time")
+        system_fields_pattern <- paste(system_fields, collapse = "|")
+        
+        # If there are non-system fields in the table that aren't in metadata, throw an error
+        if(length(fields_in_table_not_in_metadata) != 0 && 
+           !all(fields_in_table_not_in_metadata %in% system_fields)){
+          
+          # Filter out system fields from the list of missing metadata fields
+          undocumented_fields <- fields_in_table_not_in_metadata[
+            !grepl(system_fields_pattern, fields_in_table_not_in_metadata, ignore.case = FALSE)
+          ]
+          
+          # Format the list of undocumented fields for the error message
+          undocumented_fields_formatted <- paste(undocumented_fields, collapse = "\n")
+          
+          # Stop execution with informative error message
+          stop(glue::glue('The metadata table is missing the following fields from table {table_name}:
 
-      if(field_names_to_snakecase){
-        names(x_table) <- snakecase::to_snake_case(names(x_table))
-      }
-
-      ## add in missing columns if any
-      fields_obs <- names(x_table)
-
-      # check if any discrepancy between metadata and table
-      fields_diff <- set_diff(fields_exp,fields_obs)
-      #browser()
-      if(!is.null(fields_diff)){
-        # check for fields in obs not in exp - error
-        obs_exp  <- setdiff(fields_obs,fields_exp)
-        ignore_fields <- c("id","createdTime","created_time")
-        ignore_fields_pattern <- paste(ignore_fields,collapse = "|")
-        if(length(obs_exp) != 0 & !all(obs_exp %in% ignore_fields)){
-          missing_fields <- obs_exp[!grepl(ignore_fields_pattern,obs_exp,ignore.case = FALSE)]
-          missing_fields_glue <- paste(missing_fields, collapse = "\n")
-          stop(glue::glue('The metadata table is missing the following fields from table {x}:
-
-                          {missing_fields_glue}
+                          {undocumented_fields_formatted}
 
                           Please update the metadata table via R with air_update_metadata_table
                           or manually at https://airtable.com/{base}'))
         }
-        # check for fields in exp and not in obs - append unless frictionless
+        
+        # Add fields that exist in metadata but not in table, if requested
         if(add_missing_fields){
-          exp_obs <- setdiff(fields_exp,fields_obs)
-          x_table[exp_obs] <- list(character(0))
+          fields_in_metadata_not_in_table <- setdiff(expected_fields, observed_fields)
+          
+          # Add empty columns for fields that are missing from the table
+          current_table[fields_in_metadata_not_in_table] <- list(character(0))
         }
       }
-
-      ## download files from attachment fields
-
+      
+      # Process attachments if enabled
       if(download_attachments){
+        
+         #Create a local copy of attachment_fields for this table iteration
+        table_attachment_fields <- attachment_fields
 
-        if(rlang::is_empty(attachment_fields) & !"field_type"%in% names(metadata)){
+          # Verify we can identify which fields contain attachments
+        if(rlang::is_empty(table_attachment_fields) && !"field_type" %in% names(metadata)){
           rlang::abort("Unclear which fields contain attachments.
-                       Either use the attachment_fields argument or
-                       supply a metadata dataframe with field_types == 'multipleAttachments' for
-                       fields that should be downloaded")
-        }
+                      Either use the attachment_fields argument or
+                      supply a metadata dataframe with field_types == 'multipleAttachments' for
+                      fields that should be downloaded")
+        } 
 
-        ## get attachment fields
-        if(is.null(attachment_fields)){
-          metadata_table <- metadata[metadata$table_name == x,c("field_name","field_type")]
-
-          attachment_fields <-metadata_table |>
+        # Determine which fields contain attachments
+        if(is.null(table_attachment_fields)) {
+        
+          table_metadata <- metadata[metadata$table_name == table_name, c("field_name", "field_type")]
+          
+          # Extract fields of type 'multipleAttachments'
+          table_attachment_fields <- table_metadata |>
             dplyr::filter(field_type == "multipleAttachments") |>
             dplyr::pull(field_name)
-
-          if(rlang::is_empty(attachment_fields)){
+          
+          # Inform user if no attachment fields are found
+          if(rlang::is_empty(table_attachment_fields)) {
             rlang::inform("No fields of type multipleAttachment. No files to download")
-            return(x_table)
+            return(current_table)
+          }
+        }
+        
+        # Verify the attachment fields exist in the table
+        if(is.character(table_attachment_fields)){
+          if(!any(table_attachment_fields %in% names(current_table))) {
+            return(current_table)
           }
         }
 
-        # check for field in table
-        if(is.character(attachment_fields)){
-          if(!any(attachment_fields %in% names(x_table))){
-            return(x_table)
-          }
+        # Configure download delay for polite API usage
+        download_delay <- 0
+        if(polite_downloads) {
+          download_delay <- 0.01  # 10ms delay between downloads
         }
-
-        ## build up attachment fields on x_table
-        sleep_time <- 0
-        if(polite_downloads){
-          sleep_time <- 0.01
-        }
-        for(af in attachment_fields){
-          Sys.sleep(sleep_time)
-          x_table <- air_download_attachments(x_table,field = af,...)
+        
+        # Process each attachment field
+        for(attachment_field in table_attachment_fields){
+          Sys.sleep(download_delay)
+          # Download attachments for the current field
+          current_table <- air_download_attachments(current_table,
+                                                    field = attachment_field,
+                                                    table_name = snakecase::to_snake_case(table_name), 
+                                                    ...)
         }
       }
-
-
-      return(x_table)
-
+      
+      return(current_table)
     })
-
+  
+  # Add metadata to the result list
   table_list$metadata <- metadata
-
-  #browser()
-  # check for description table
-  named_description <- grepl(pattern = "description",x = names(table_list), ignore.case = TRUE)
-
-
+  
+  # Check if there's a description table in the results
+  has_description_table <- grepl(pattern = "description", x = names(table_list), ignore.case = TRUE)
+  
+  # Handle description data based on parameters and existing data
   if(!is.null(description)){
-    if(any(named_description)){
+    if(any(has_description_table)){
       warning("Base has a description table and a description data.frame was supplied to
               this function. Inserting description data.frame at $description. Table
               extract may be overwritten.")
     }
     table_list$description <- description
   } else {
-    ### description may already be in the base, think about
-    ## how best to handle this
-    if(
-      all(
-        !named_description
-      )
-    ){
-      ## give null description
+    # If no description provided and none exists in the results, generate a default one
+    if(all(!has_description_table)){
       table_list$description <- air_generate_base_description()
     }
   }
-
-  #   named_description_post <- grepl(pattern = "description",x = names(table_list), ignore.case = TRUE)
-  #
-  #   table_list[named_description_post][[1]]$created <- Sys.Date()
-
+  
+  # Return the complete list of tables, metadata, and description
   return(table_list)
 }
-
 
 #' Flatten list columns to character
 #'
@@ -1182,80 +1204,148 @@ flatten_col_to_chr <- function(data_frame){
 #'
 #' @return Vector of file paths
 #' @export
-air_dump_to_csv <- function(table_list,output_dir= "outputs",
-                            attachments_dir=NULL,
+air_dump_to_csv <- function(table_list, output_dir = "outputs",
+                            attachments_dir = NULL,
                             overwrite = FALSE,
                             output_id = NULL,
-                            names_to_snake_case = TRUE){
-
+                            names_to_snake_case = TRUE) {
+  
   # create a unique id for the data
-  if(is.null(output_id)){
+  if (is.null(output_id)) {
     output_id <- rlang::hash(table_list)
   }
-
-
+  
   # check if data already exist
-  output_dir_path_final  <- sprintf("%s/%s",output_dir,output_id)
-  if(dir.exists(output_dir_path_final) & !overwrite){
-    message("data already exist, files not written. Set overwrite
-            to TRUE ")
-    return(list.files(output_dir_path_final,full.names = TRUE))
+  output_dir_path_final <- sprintf("%s/%s", output_dir, output_id)
+  if (all(dir.exists(output_dir_path_final)) && !overwrite) {
+    message("Data already exists, files not written. Set overwrite to TRUE")
+    return(list.files(output_dir_path_final, full.names = TRUE))
   }
-
+  
   # create temp dir
   temp_path <- tempdir()
-  output_dir_path <- sprintf("%s/%s",temp_path,output_id)
+  output_dir_path <- sprintf("%s/%s", temp_path, output_id)
+  
+  # Create temp directory if it doesn't exist
+  if (!dir.exists(output_dir_path)) {
+    dir.create(output_dir_path, recursive = TRUE)
+  }
+  
+  if (!dir.exists(output_dir_path)) {
+    stop(glue::glue("Failed to create temporary directory: {output_dir_path}"))
+  }
+  
+  # Process each table
+  file_paths <- purrr::map2_chr(table_list, names(table_list), function(x_table, y_table_name) {
+    
+    # MINIMAL FIX: Skip if x_table is NULL or names(x_table) is NULL
+    if (is.null(x_table) || is.null(names(x_table)) || !is.data.frame(x_table)) {
+      message(paste("Skipping", y_table_name, "- not a valid data frame or missing column names"))
+      return(NA_character_)
+    }
 
-  ### consider using temp dir then copying once finished processing
-
-  dir.create(output_dir_path,recursive = TRUE)
-
-  purrr::walk2(table_list, names(table_list), function(x_table,y_table_name){
-
-    if(names_to_snake_case){
+    if (names_to_snake_case) {
       ##  clean table name
       y_table_name_snake <- snakecase::to_snake_case(y_table_name)
       ## clean up field names in table
-      x_names_snake  <- snakecase::to_snake_case(names(x_table))
-
+      x_names_snake <- snakecase::to_snake_case(names(x_table))
+      
       ## check that we didn't create duplicate field names
-      dup_check <- duplicated(names(x_table))
-
-      if(any(dup_check)){
-       err_msg <- glue::glue("The following field names in table {y_table_name} are duplicated after converting to snake_case:
+      dup_check <- duplicated(x_names_snake)
+      
+      if (any(dup_check)) {
+        warn_msg <- glue::glue("The following field names in table {y_table_name} are duplicated after converting to snake_case:
                              \n
-                             {names(x_table)[dup_check]}\n
-                             Fix field names in airtable or set `names_to_snake_case` to FALSE")
-       rlang::abort(err_msg)
+                             {paste(names(x_table)[which(dup_check)], collapse = ', ')}\n
+                             attempting to fix automatically")
+        print(warn_msg)
+        warning(warn_msg)
+        
+        # Use make.unique to create unique names while preserving the original names where possible
+        x_names_snake <- make.unique(x_names_snake, sep = ".")
       }
-
+      
       y_table_name <- y_table_name_snake
-
       names(x_table) <- x_names_snake
-
     }
+    
+    # Sanitize table name further by replacing problematic characters
+    y_table_name_sanitized <- gsub("[/ ]", "_", y_table_name)
+    
     x_table_flat <- flatten_col_to_chr(x_table)
-
+    
     ## export to CSV
-
-    output_file_path  <- sprintf("%s/%s.csv",output_dir_path,y_table_name)
-
-    utils::write.csv(x_table_flat,output_file_path,row.names = FALSE)
+    output_file_path <- sprintf("%s/%s.csv", output_dir_path, y_table_name_sanitized)
+    
+    # Create parent directory if needed
+    parent_dir <- dirname(output_file_path)
+    if (!dir.exists(parent_dir)) {
+      dir.create(parent_dir, recursive = TRUE)
+    }
+    
+    tryCatch({
+      write.csv(x_table_flat, output_file_path, row.names = FALSE)
+      message(glue::glue("Successfully created temporary file for {y_table_name_sanitized}"))
+    }, error = function(e) {
+      warning(glue::glue("Failed to write {y_table_name_sanitized} to temporary file: {e$message}"))
+    })
+    
+    return(output_file_path)
   })
-
-  ## copy from temp to final
-  dir.create(output_dir_path_final,recursive = TRUE)
-  outputs_list <- list.files(output_dir_path,full.names = T)
-
-  file.copy(from = outputs_list,to = output_dir_path_final,recursive = FALSE ,copy.mode = TRUE)
-
-  ## copy attachments into folder
-  if(!is.null(attachments_dir)){
-    message("copying attachments")
-    file.copy(from = attachments_dir, to = output_dir_path_final,recursive = TRUE ,copy.mode = TRUE )
+  
+  ## Create final output directory
+  if (!all(dir.exists(output_dir_path_final))) {
+    dir.create(output_dir_path_final, recursive = TRUE)
+    
+    if (!all(dir.exists(output_dir_path_final))) {
+      stop(glue::glue("Failed to create output directory: {output_dir_path_final}"))
+    }
   }
-  return(list.files(output_dir_path_final,full.names = TRUE))
-
+  
+  ## Copy from temp to final
+  outputs_list <- list.files(output_dir_path, full.names = TRUE)
+  
+  # Copy files and handle errors
+  copied_files <- sapply(outputs_list, function(src_file) {
+    dest_file <- file.path(output_dir_path_final, basename(src_file))
+    
+    if (file.exists(dest_file) && !overwrite) {
+      message(glue::glue("File {dest_file} already exists and overwrite=FALSE. Skipping."))
+      return(dest_file)
+    }
+    
+    copy_result <- tryCatch({
+      file.copy(from = src_file, to = dest_file, overwrite = overwrite)
+      message(glue::glue("Successfully copied {basename(src_file)} to final location"))
+      dest_file
+    }, error = function(e) {
+      warning(glue::glue("Failed to copy {basename(src_file)}: {e$message}"))
+      NA
+    })
+    
+    return(copy_result)
+  })
+  
+  ## Copy attachments into folder if specified
+  if (!is.null(attachments_dir)) {
+    if (!dir.exists(attachments_dir)) {
+      warning(glue::glue("Attachments directory {attachments_dir} does not exist. Skipping attachment copy."))
+    } else {
+      message("Copying attachments")
+      attachments_dest <- file.path(output_dir_path_final, basename(attachments_dir))
+      
+      tryCatch({
+        file.copy(from = attachments_dir, to = output_dir_path_final, recursive = TRUE, copy.mode = TRUE)
+        message(glue::glue("Successfully copied attachments to {attachments_dest}"))
+      }, error = function(e) {
+        warning(glue::glue("Failed to copy attachments: {e$message}"))
+      })
+    }
+  }
+  
+  # Return list of all files in the final directory
+  final_files <- list.files(output_dir_path_final, full.names = TRUE)
+  return(final_files)
 }
 
 
@@ -1277,73 +1367,92 @@ air_dump_to_csv <- function(table_list,output_dir= "outputs",
 #' description and metadata tables.
 #' @export air_dump_to_json
 #'
-air_dump_to_json <- function(base, metadata, description = NULL, output_dir= "outputs", overwrite = FALSE){
-
+air_dump_to_json <- function(base, metadata, description = NULL, output_dir = "outputs", overwrite = FALSE) {
+  
   names(metadata) <- snakecase::to_snake_case(names(metadata))
-
+  
   ## check for required fields
   required_fields <- c("table_name")
-
-  if(!all(required_fields %in% names(metadata))){
+  
+  if (!all(required_fields %in% names(metadata))) {
     stop(glue::glue("metadata table must contain the
                     following field: {required_fields}. Note
                     that field names are converted to snakecase
                     before check."))
   }
-
-
+  
   base_table_names <- unique(metadata$table_name)
-
+  
   print(base_table_names)
-
+  
   json_list <- base_table_names |>
     purrr::set_names() |>
-    purrr::map(function(x){
-
+    purrr::map(function(x) {
       ### no expected fields, just json
       ### see air_make_json for refactor
-
-      x_json <- fetch_all_json(base,x)
-
+      x_json <- fetch_all_json(base, x)
       return(x_json)
-
     })
-
+  
   json_list$metadata <- jsonlite::toJSON(metadata)
-
+  
   # check for description table
-  named_description <- grepl(pattern = "description",x = names(json_list), ignore.case = TRUE)
-
-  if(!is.null(description)){
-    if(any(named_description)){
+  named_description <- grepl(pattern = "description", x = names(json_list), ignore.case = TRUE)
+  
+  if (!is.null(description)) {
+    if (any(named_description)) {
       warning("Base has a description table and a description data.frame was supplied to
               this function. Inserting description data.frame at $description. Table
               extract may be overwritten.")
     }
     json_list$description <- jsonlite::toJSON(description)
   }
-
+  
   ## does not add a description table if not present
-
-
+  
   ## write to files
   output_id <- rlang::hash(json_list)
-
-  output_dir_path <- sprintf("%s/%s",output_dir,output_id)
-
-  dir.create(output_dir_path,recursive = TRUE)
-
-  purrr::walk2(json_list, names(json_list), function(x_table,y_table_name){
-
-    output_file_path  <- sprintf("%s/%s.json",output_dir_path,y_table_name)
-
-    jsonlite::write_json(x_table,path = output_file_path)
+  
+  output_dir_path <- sprintf("%s/%s", output_dir, output_id)
+  
+  # Create directory if it doesn't exist
+  if (!dir.exists(output_dir_path)) {
+    dir.create(output_dir_path, recursive = TRUE)
+  }
+  
+  if (!dir.exists(output_dir_path)) {
+    stop(glue::glue("Failed to create directory: {output_dir_path}"))
+  }
+  
+  file_paths <- purrr::map2_chr(json_list, names(json_list), function(x_table, y_table_name) {
+    # Sanitize table names by replacing problematic characters
+    sanitized_table_name <- gsub("[/ ]", "_", y_table_name)
+    
+    output_file_path <- sprintf("%s/%s.json", output_dir_path, sanitized_table_name)
+    
+    # Check if file exists and respect overwrite parameter
+    if (file.exists(output_file_path) && !overwrite) {
+      message(glue::glue("File {output_file_path} already exists and overwrite=FALSE. Skipping."))
+      return(output_file_path)
+    }
+    
+    # Create parent directories if they don't exist
+    parent_dir <- dirname(output_file_path)
+    if (!dir.exists(parent_dir)) {
+      dir.create(parent_dir, recursive = TRUE)
+    }
+    
+    tryCatch({
+      jsonlite::write_json(x_table, path = output_file_path)
+      message(glue::glue("Successfully wrote {sanitized_table_name} to {output_file_path}"))
+    }, error = function(e) {
+      warning(glue::glue("Failed to write {sanitized_table_name} to {output_file_path}: {e$message}"))
+    })
+    
+    return(output_file_path)
   })
-
-  return(list.files(output_dir_path,full.names = TRUE))
-
-
-
+  
+  return(file_paths)
 }
 
 

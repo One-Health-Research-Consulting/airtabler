@@ -31,7 +31,7 @@
 #'   or just call primitives \code{\link{air_get}}, \code{\link{air_insert}},
 #'   \code{\link{air_update}} and \code{\link{air_delete}} to access your
 #'   airtable data.
-#' @docType package
+#' 
 #' @name airtabler-package
 #' @aliases airtabler
 NULL
@@ -100,13 +100,13 @@ air_get <- function(base, table_name,
                     filterByFormula = NULL,
                     combined_result = TRUE) {
 
-  search_path <- table_name
+    # Encode the table_name to handle special characters
+  search_path <- utils::URLencode(table_name, reserved = TRUE)
 
   if(!missing(record_id)) {
     search_path <- paste0(search_path, "/", record_id)
   }
   request_url <- sprintf("%s/%s/%s?", air_url, base, search_path)
-  request_url <- utils::URLencode(request_url)
 
   # append parameters to URL:
   param_list <- as.list(environment())[c(

@@ -12,7 +12,7 @@ Provides access to the [Airtable API](http://airtable.com/api)
 
 
 ```r
-devtools::install_github("ecohealthalliance/airtabler")
+devtools::install_github("One-Health-Research-Consulting/airtabler")
 ```
 
 ## Setup

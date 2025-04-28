@@ -1066,6 +1066,13 @@ air_dump <- function(base, metadata= NULL, description = NULL,
 
   # description not provided, not in list of tables
   if(!named_description){
+    warning(
+"Base does not have a description table and a description data.frame was not
+supplied to this function. A blank data frame will be generated at $description
+using air_generate_base_description().
+
+If you believe there should be a description table, try updating your structural
+metadata." )
     table_list$description <- air_generate_base_description()
   }
 

@@ -42,7 +42,7 @@ will be included in the records. Does not work when retrieving individual record
 \item{sortDirection}{(optional) "asc" or "desc". The sort order in which the
 records will be returned. Defaults to asc.}
 
-\item{filterByFormula}{String. Use a formula to filter results. See \href{airtable docs}{https://support.airtable.com/hc/en-us/articles/223247187-How-to-sort-filter-or-retrieve-ordered-records-in-the-API}
+\item{filterByFormula}{String. Use a formula to filter results. See \href{airtable docs}{https://support.airtable.com/docs/airtable-web-api-using-filterbyformula-or-sort-parameters}
 this parameter to reduce the amount of data transferred.}
 
 \item{combined_result}{If TRUE (default) all data is returned in the same data.

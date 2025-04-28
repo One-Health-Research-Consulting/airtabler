@@ -1050,34 +1050,24 @@ air_dump <- function(base, metadata= NULL, description = NULL,
 
   table_list$metadata <- metadata
 
-  #browser()
+
   # check for description table
-  named_description <- grepl(pattern = "description",x = names(table_list), ignore.case = TRUE)
+  named_description <- "description" %in% names(table_list)
 
-
-  if(!is.null(description)){
-    if(any(named_description)){
+  # if a description is provided
+  if(is.data.frame(description)){
+    if(named_description){
       warning("Base has a description table and a description data.frame was supplied to
               this function. Inserting description data.frame at $description. Table
               extract may be overwritten.")
     }
     table_list$description <- description
-  } else {
-    ### description may already be in the base, think about
-    ## how best to handle this
-    if(
-      all(
-        !named_description
-      )
-    ){
-      ## give null description
-      table_list$description <- air_generate_base_description()
-    }
   }
 
-  #   named_description_post <- grepl(pattern = "description",x = names(table_list), ignore.case = TRUE)
-  #
-  #   table_list[named_description_post][[1]]$created <- Sys.Date()
+  # description not provided, not in list of tables
+  if(!named_description){
+    table_list$description <- air_generate_base_description()
+  }
 
   return(table_list)
 }

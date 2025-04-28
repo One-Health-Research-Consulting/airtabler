@@ -1,41 +1,4 @@
-#' airtabler: Interface to the Airtable API
-#'
-#' Provides access to the Airtable API (\url{http://airtable.com/api}).
-#'
-#' @section Setup:
-#'   Create and configure the schema of an Airtable base on (\url{http://airtable.com})
-#'   and check the API on \url{http://airtable.com/api}.
-#'
-#' @section API key:
-#'   Generate the Airtable API token from your Airtable account page
-#'   (http://airtable.com/create/tokens).
-#'
-#'   \pkg{airtabler} functions will read the API key from
-#'   environment variable \code{AIRTABLE_API_KEY}. To start R session with the
-#'   initialized environment variable create an \code{.Renviron} file in your R home
-#'   with a line like this:
-#'
-#'   \code{AIRTABLE_API_KEY=************}
-#'
-#'   To check where your R home is, try \code{normalizePath("~")}.
-#'
-#'   The \pkg{usethis} and \pkg{dotenv} packages are useful for setting environment
-#'   variables.
-#'    \code{usethis::edit_r_environ} allow you to modify the \code{.Renviron} file.
-#'    \code{dotenv::load_dot_env} allows you to load environment variables from a
-#'    \code{.env} file. This second approach is especially helpful if you work
-#'    with multiple tokens.
-#'
-#' @section Usage:
-#'   Use \code{\link{airtable}} function to get airtable base object
-#'   or just call primitives \code{\link{air_get}}, \code{\link{air_insert}},
-#'   \code{\link{air_update}} and \code{\link{air_delete}} to access your
-#'   airtable data.
-#' @docType package
-#' @name airtabler-package
-#' @aliases airtabler
-NULL
-
+utils::globalVariables(c("createdTime", "field_name","field_type","file_path"))
 air_url <- "https://api.airtable.com/v0"
 air_meta_url <- "https://api.airtable.com/v0/meta/bases"
 
@@ -84,7 +47,7 @@ air_secret_key <- function(){
 #'  If FALSE table fields are returned in separate \code{fields} element.
 #' @param fields List. (optional) Only data for fields whose names are in this list
 #'   will be included in the records. Does not work when retrieving individual records with \code{record_id}
-#' @param filterByFormula String. Use a formula to filter results. See \href{airtable docs}{https://support.airtable.com/hc/en-us/articles/223247187-How-to-sort-filter-or-retrieve-ordered-records-in-the-API}
+#' @param filterByFormula String. Use a formula to filter results. See \href{airtable docs}{https://support.airtable.com/docs/airtable-web-api-using-filterbyformula-or-sort-parameters}
 #'   this parameter to reduce the amount of data transferred.
 #' @return A data frame with records or a list with record details if
 #'   \code{record_id} is specified.
@@ -188,7 +151,7 @@ list_params <- function(x, par_name) {
 #'   false, "", NaN, [], or #Error! the record will be included in the response.
 #'   If combined with view, only records in that view which satisfy the formula
 #'   will be returned. For example, to only include records where Country isn't
-#'   empty, pass in: NOT({Country} = '')
+#'   empty, pass in: \code{NOT({Country} = '')}
 #'
 #' @section Sorting:
 #'   Each sort object must have a field key specifying the name of

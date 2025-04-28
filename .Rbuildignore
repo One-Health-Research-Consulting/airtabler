@@ -8,3 +8,9 @@
 ^\.travis\.yml$
 ^doc$
 ^Meta$
+^\.env$
+^\.github$
+^testing_script\.R$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$

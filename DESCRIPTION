@@ -1,7 +1,7 @@
 Package: airtabler
 Type: Package
 Title: Interface to the Airtable API
-Version: 0.2.16
+Version: 0.2.17
 Date: 2023-08-17
 Author: Darko Bergant
 Maintainer: Collin Schwantes <schwantes@ecohealthalliance.org>

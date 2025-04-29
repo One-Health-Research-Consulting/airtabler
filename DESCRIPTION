@@ -1,7 +1,7 @@
 Package: airtabler
 Type: Package
 Title: Interface to the Airtable API
-Version: 0.2.16
+Version: 0.2.17
 Date: 2023-08-17
 Author: Darko Bergant
 Maintainer: Collin Schwantes <schwantes@ecohealthalliance.org>
@@ -22,7 +22,6 @@ Imports:
     purrr,
     utils,
     snakecase,
-    tidyselect,
     rlang,
     stringr,
     tibble,
@@ -30,7 +29,7 @@ Imports:
     assertthat
 Remotes: 
     ropenscilabs/deposits
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.2
 Suggests: 
     knitr,
     rmarkdown

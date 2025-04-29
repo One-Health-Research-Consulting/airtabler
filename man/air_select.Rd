@@ -70,7 +70,7 @@ Select records from table
   false, "", NaN, [], or #Error! the record will be included in the response.
   If combined with view, only records in that view which satisfy the formula
   will be returned. For example, to only include records where Country isn't
-  empty, pass in: NOT({Country} = '')
+  empty, pass in: \code{NOT({Country} = '')}
 }
 
 \section{Sorting}{

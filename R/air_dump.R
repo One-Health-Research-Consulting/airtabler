@@ -1052,7 +1052,7 @@ air_dump <- function(base, metadata= NULL, description = NULL,
 
 
   # check for description table
-  named_description <- any(grepl(pattern = "^decscription$",x =names(table_list),ignore.case = TRUE ))
+  named_description <- any(grepl(pattern = "^Description$",x =names(table_list),ignore.case = TRUE ))
 
   # if a description is provided
   if(is.data.frame(description)){
